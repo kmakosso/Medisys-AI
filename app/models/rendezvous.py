@@ -73,8 +73,3 @@ class RendezVous(Base):
 
     def can_transition_to(self, new_statut: StatutRDV) -> bool:
         return new_statut.value in TRANSITIONS.get(self.statut.value, [])
-
-
-from app.models.disponibilite import Disponibilite  # noqa: E402, F401
-from app.models.medecin import MedecinProfile  # noqa: E402, F401
-from app.models.patient import PatientProfile  # noqa: E402, F401

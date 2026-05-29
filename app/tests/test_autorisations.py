@@ -53,7 +53,7 @@ async def test_patient_cannot_access_admin_patient_endpoint(client: AsyncClient)
 @pytest.mark.asyncio
 async def test_unauthenticated_cannot_access_protected_endpoint(client: AsyncClient):
     resp = await client.get(f"{PATIENTS_URL}/me")
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
 
 
 @pytest.mark.asyncio

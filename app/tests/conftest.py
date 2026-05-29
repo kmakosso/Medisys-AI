@@ -9,9 +9,14 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app.api.v1.auth import limiter
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+
+# Disable login rate limiting during tests (the in-memory counter persists
+# across the test session and would otherwise trip on repeated logins).
+limiter.enabled = False
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

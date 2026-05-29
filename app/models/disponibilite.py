@@ -41,7 +41,3 @@ class Disponibilite(Base):
     rendezvous: Mapped["RendezVous | None"] = relationship(  # type: ignore[name-defined]
         "RendezVous", back_populates="creneau", uselist=False
     )
-
-
-from app.models.medecin import MedecinProfile  # noqa: E402, F401
-from app.models.rendezvous import RendezVous  # noqa: E402, F401

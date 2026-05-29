@@ -41,10 +41,3 @@ class User(Base):
     audit_logs: Mapped[list["AuditLog"]] = relationship(  # type: ignore[name-defined]
         "AuditLog", back_populates="user"
     )
-
-
-# Avoid circular imports
-from app.models.audit import AuditLog  # noqa: E402, F401
-from app.models.medecin import MedecinProfile  # noqa: E402, F401
-from app.models.patient import PatientProfile  # noqa: E402, F401
-from app.models.refresh_token import RefreshToken  # noqa: E402, F401

@@ -34,8 +34,3 @@ class MedecinProfile(Base):
     rendez_vous: Mapped[list["RendezVous"]] = relationship(  # type: ignore[name-defined]
         "RendezVous", back_populates="medecin", foreign_keys="RendezVous.medecin_id"
     )
-
-
-from app.models.disponibilite import Disponibilite  # noqa: E402, F401
-from app.models.rendezvous import RendezVous  # noqa: E402, F401
-from app.models.user import User  # noqa: E402, F401

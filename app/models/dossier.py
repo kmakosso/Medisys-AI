@@ -63,7 +63,3 @@ class EntreeDossier(Base):
 
     dossier: Mapped["DossierMedical"] = relationship("DossierMedical", back_populates="entrees")
     medecin: Mapped["MedecinProfile"] = relationship("MedecinProfile")  # type: ignore[name-defined]
-
-
-from app.models.medecin import MedecinProfile  # noqa: E402, F401
-from app.models.patient import PatientProfile  # noqa: E402, F401

@@ -5,5 +5,17 @@ class Base(DeclarativeBase):
     pass
 
 
-# Import all models here so Alembic can discover them via metadata
-from app.models import audit, disponibilite, dossier, medecin, patient, rendezvous, user  # noqa: E402, F401
+# Import all models here so SQLAlchemy registers them and Alembic can discover
+# them via metadata. This is the single place where every model is imported,
+# which avoids circular imports between model modules (relationships use string
+# references resolved from SQLAlchemy's registry, not module-level imports).
+from app.models import (  # noqa: E402, F401
+    audit,
+    disponibilite,
+    dossier,
+    medecin,
+    patient,
+    refresh_token,
+    rendezvous,
+    user,
+)
