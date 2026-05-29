@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { formatCreneau, STATUT_LABELS, STATUT_STYLES } from "@/lib/format";
-import type { Disponibilite, RendezVous, StatutRDV } from "@/lib/types";
+import type { Disponibilite, PatientProfile, RendezVous, StatutRDV } from "@/lib/types";
 
 // Transitions autorisées côté médecin (miroir de la machine d'état backend).
 const ACTIONS: Record<StatutRDV, { statut: StatutRDV; label: string; style: string }[]> = {
@@ -22,6 +23,7 @@ const ACTIONS: Record<StatutRDV, { statut: StatutRDV; label: string; style: stri
 export default function MedecinRendezVousPage() {
   const [rdvs, setRdvs] = useState<RendezVous[]>([]);
   const [slotMap, setSlotMap] = useState<Record<string, Disponibilite>>({});
+  const [patientMap, setPatientMap] = useState<Record<string, PatientProfile>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -38,13 +40,27 @@ export default function MedecinRendezVousPage() {
       const map: Record<string, Disponibilite> = {};
       for (const s of slots) map[s.id] = s;
       setSlotMap(map);
-      // Tri : les demandes en attente d'abord, puis par date de créneau
       page.items.sort((a, b) => {
         const da = map[a.creneau_id]?.debut ?? "";
         const db = map[b.creneau_id]?.debut ?? "";
         return da.localeCompare(db);
       });
       setRdvs(page.items);
+
+      // Identité des patients concernés (dédupliquée)
+      const ids = Array.from(new Set(page.items.map((r) => r.patient_id)));
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            return [id, await api.getPatient(id)] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const pmap: Record<string, PatientProfile> = {};
+      for (const e of entries) if (e) pmap[e[0]] = e[1];
+      setPatientMap(pmap);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erreur de chargement.");
     } finally {
@@ -81,7 +97,9 @@ export default function MedecinRendezVousPage() {
         <ul className="space-y-3">
           {rdvs.map((r) => {
             const slot = slotMap[r.creneau_id];
+            const patient = patientMap[r.patient_id];
             const actions = ACTIONS[r.statut] ?? [];
+            const dossierAccessible = r.statut === "confirme" || r.statut === "termine";
             return (
               <li
                 key={r.id}
@@ -92,10 +110,19 @@ export default function MedecinRendezVousPage() {
                     {slot ? formatCreneau(slot.debut, slot.fin) : "Créneau"}
                   </p>
                   <p className="text-sm text-slate-600">
-                    Patient&nbsp;
-                    <span className="font-mono text-xs text-slate-400">
-                      #{r.patient_id.slice(0, 8)}
-                    </span>
+                    Patient :{" "}
+                    {patient ? (
+                      <span className="font-medium">
+                        {patient.prenom} {patient.nom}
+                      </span>
+                    ) : (
+                      <span className="font-mono text-xs text-slate-400">
+                        #{r.patient_id.slice(0, 8)}
+                      </span>
+                    )}
+                    {patient?.telephone && (
+                      <span className="ml-2 text-slate-400">{patient.telephone}</span>
+                    )}
                   </p>
                   {r.motif && <p className="text-sm text-slate-600">Motif : {r.motif}</p>}
                 </div>
@@ -108,6 +135,14 @@ export default function MedecinRendezVousPage() {
                   >
                     {STATUT_LABELS[r.statut] ?? r.statut}
                   </span>
+                  {dossierAccessible && (
+                    <Link
+                      href={`/medecin/patients/${r.patient_id}/dossier`}
+                      className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Dossier
+                    </Link>
+                  )}
                   {actions.map((a) => (
                     <button
                       key={a.statut}
@@ -124,11 +159,6 @@ export default function MedecinRendezVousPage() {
           })}
         </ul>
       )}
-
-      <p className="mt-6 text-xs text-slate-400">
-        Note : l&apos;identité complète du patient n&apos;est pas encore exposée par l&apos;API à
-        ce stade (amélioration backend prévue). Seul un identifiant abrégé est affiché.
-      </p>
     </div>
   );
 }

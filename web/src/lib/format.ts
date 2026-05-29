@@ -36,3 +36,18 @@ export const STATUT_STYLES: Record<string, string> = {
   annule: "bg-red-100 text-red-700",
   termine: "bg-slate-200 text-slate-700",
 };
+
+export const TYPE_ENTREE_LABELS: Record<string, string> = {
+  consultation: "Consultation",
+  ordonnance: "Ordonnance",
+  resultat: "Résultat",
+  note: "Note",
+};
+
+export function formatDate(iso: string): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(iso));
+}

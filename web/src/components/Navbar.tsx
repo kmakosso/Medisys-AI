@@ -26,13 +26,23 @@ export function Navbar() {
             Médecins
           </Link>
           {user?.role === "patient" && (
-            <Link href="/rendez-vous" className="text-slate-600 hover:text-brand-700">
-              Mes rendez-vous
-            </Link>
+            <>
+              <Link href="/rendez-vous" className="text-slate-600 hover:text-brand-700">
+                Mes rendez-vous
+              </Link>
+              <Link href="/dossier" className="text-slate-600 hover:text-brand-700">
+                Mon dossier
+              </Link>
+            </>
           )}
           {user?.role === "medecin" && (
             <Link href="/medecin/rendez-vous" className="text-slate-600 hover:text-brand-700">
               Espace médecin
+            </Link>
+          )}
+          {user?.role === "admin" && (
+            <Link href="/admin/medecins" className="text-slate-600 hover:text-brand-700">
+              Admin
             </Link>
           )}
 

@@ -81,3 +81,52 @@ export interface CreateDisponibilitePayload {
   debut: string; // ISO datetime
   fin: string;
 }
+
+export type Sexe = "masculin" | "feminin" | "autre";
+
+export interface PatientProfile {
+  id: string;
+  user_id: string;
+  nom: string;
+  prenom: string;
+  date_naissance: string | null;
+  sexe: Sexe | null;
+  telephone: string | null;
+  adresse: string | null;
+  ville: string | null;
+}
+
+export interface CreateMedecinPayload {
+  email: string;
+  password: string;
+  nom: string;
+  prenom: string;
+  specialite: string;
+  numero_ordre?: string;
+  structure_sante?: string;
+  telephone?: string;
+  ville?: string;
+}
+
+export type TypeEntree = "consultation" | "ordonnance" | "resultat" | "note";
+
+export interface EntreeDossier {
+  id: string;
+  dossier_id: string;
+  medecin_id: string;
+  type_entree: TypeEntree;
+  contenu: string;
+  date_entree: string;
+}
+
+export interface DossierMedical {
+  id: string;
+  patient_id: string;
+  created_at: string;
+  entrees: EntreeDossier[];
+}
+
+export interface CreateEntreePayload {
+  type_entree: TypeEntree;
+  contenu: string;
+}

@@ -3,12 +3,17 @@
 
 import type {
   CreateDisponibilitePayload,
+  CreateEntreePayload,
+  CreateMedecinPayload,
   CreateRendezVousPayload,
   Disponibilite,
+  DossierMedical,
+  EntreeDossier,
   LoginPayload,
   MedecinListItem,
   MedecinProfile,
   PaginatedRendezVous,
+  PatientProfile,
   RegisterPayload,
   RendezVous,
   StatutRDV,
@@ -217,5 +222,34 @@ export const api = {
     request<RendezVous>(`/api/v1/rendez-vous/${id}/statut`, {
       method: "PATCH",
       body: { statut },
+    }),
+
+  // Patients
+  getMyPatient: () => request<PatientProfile>("/api/v1/patients/me"),
+
+  getPatient: (id: string) => request<PatientProfile>(`/api/v1/patients/${id}`),
+
+  listPatients: (params: { page?: number; size?: number } = {}) => {
+    const qs = new URLSearchParams();
+    qs.set("page", String(params.page ?? 1));
+    qs.set("size", String(params.size ?? 50));
+    return request<PatientProfile[]>(`/api/v1/patients?${qs.toString()}`);
+  },
+
+  // Admin — médecins
+  createMedecin: (payload: CreateMedecinPayload) =>
+    request<MedecinProfile>("/api/v1/medecins", { method: "POST", body: payload }),
+
+  deactivateMedecin: (id: string) =>
+    request<{ message: string }>(`/api/v1/medecins/${id}/desactiver`, { method: "PATCH" }),
+
+  // Dossier médical
+  getDossier: (patientId: string) =>
+    request<DossierMedical>(`/api/v1/patients/${patientId}/dossier`),
+
+  addDossierEntry: (patientId: string, payload: CreateEntreePayload) =>
+    request<EntreeDossier>(`/api/v1/patients/${patientId}/dossier/entrees`, {
+      method: "POST",
+      body: payload,
     }),
 };
