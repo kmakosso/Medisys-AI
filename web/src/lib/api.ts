@@ -10,10 +10,13 @@ import type {
   DossierMedical,
   EntreeDossier,
   LoginPayload,
+  MedecinAdminItem,
   MedecinListItem,
   MedecinProfile,
+  MedecinProfileUpdate,
   PaginatedRendezVous,
   PatientProfile,
+  PatientProfileUpdate,
   RegisterPayload,
   RendezVous,
   StatutRDV,
@@ -185,6 +188,9 @@ export const api = {
   // Profil du médecin connecté
   getMyMedecin: () => request<MedecinProfile>("/api/v1/medecins/me"),
 
+  updateMyMedecin: (payload: MedecinProfileUpdate) =>
+    request<MedecinProfile>("/api/v1/medecins/me", { method: "PUT", body: payload }),
+
   // Créneaux libres (public) — pour les patients
   listDisponibilites: (medecinId: string) =>
     request<Disponibilite[]>(`/api/v1/medecins/${medecinId}/disponibilites?libre_only=true`, {
@@ -227,6 +233,9 @@ export const api = {
   // Patients
   getMyPatient: () => request<PatientProfile>("/api/v1/patients/me"),
 
+  updateMyPatient: (payload: PatientProfileUpdate) =>
+    request<PatientProfile>("/api/v1/patients/me", { method: "PUT", body: payload }),
+
   getPatient: (id: string) => request<PatientProfile>(`/api/v1/patients/${id}`),
 
   listPatients: (params: { page?: number; size?: number } = {}) => {
@@ -237,11 +246,17 @@ export const api = {
   },
 
   // Admin — médecins
+  listMedecinsAdmin: () =>
+    request<MedecinAdminItem[]>("/api/v1/medecins/admin/tous"),
+
   createMedecin: (payload: CreateMedecinPayload) =>
     request<MedecinProfile>("/api/v1/medecins", { method: "POST", body: payload }),
 
   deactivateMedecin: (id: string) =>
     request<{ message: string }>(`/api/v1/medecins/${id}/desactiver`, { method: "PATCH" }),
+
+  activateMedecin: (id: string) =>
+    request<{ message: string }>(`/api/v1/medecins/${id}/activer`, { method: "PATCH" }),
 
   // Dossier médical
   getDossier: (patientId: string) =>

@@ -130,3 +130,33 @@ export interface CreateEntreePayload {
   type_entree: TypeEntree;
   contenu: string;
 }
+
+export interface MedecinAdminItem {
+  id: string;
+  nom: string;
+  prenom: string;
+  specialite: string;
+  structure_sante: string | null;
+  ville: string | null;
+  is_active: boolean;
+}
+
+export interface PatientProfileUpdate {
+  nom?: string;
+  prenom?: string;
+  date_naissance?: string | null;
+  sexe?: Sexe | null;
+  telephone?: string | null;
+  adresse?: string | null;
+  ville?: string | null;
+}
+
+export interface MedecinProfileUpdate {
+  nom?: string;
+  prenom?: string;
+  specialite?: string;
+  numero_ordre?: string | null;
+  structure_sante?: string | null;
+  telephone?: string | null;
+  ville?: string | null;
+}

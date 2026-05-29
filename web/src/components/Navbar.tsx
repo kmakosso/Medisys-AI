@@ -33,6 +33,9 @@ export function Navbar() {
               <Link href="/dossier" className="text-slate-600 hover:text-brand-700">
                 Mon dossier
               </Link>
+              <Link href="/profil" className="text-slate-600 hover:text-brand-700">
+                Mon profil
+              </Link>
             </>
           )}
           {user?.role === "medecin" && (

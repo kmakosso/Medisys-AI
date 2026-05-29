@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { CreateMedecinPayload, MedecinListItem } from "@/lib/types";
+import type { CreateMedecinPayload, MedecinAdminItem } from "@/lib/types";
 
 const EMPTY: CreateMedecinPayload = {
   email: "",
@@ -17,7 +17,7 @@ const EMPTY: CreateMedecinPayload = {
 };
 
 export default function AdminMedecinsPage() {
-  const [medecins, setMedecins] = useState<MedecinListItem[]>([]);
+  const [medecins, setMedecins] = useState<MedecinAdminItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,12 +25,13 @@ export default function AdminMedecinsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      setMedecins(await api.listMedecins({ size: 100 }));
+      setMedecins(await api.listMedecinsAdmin());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Erreur de chargement.");
     } finally {
@@ -68,13 +69,20 @@ export default function AdminMedecinsPage() {
     }
   };
 
-  const handleDeactivate = async (id: string) => {
+  const handleToggle = async (m: MedecinAdminItem) => {
     setError(null);
+    setActingId(m.id);
     try {
-      await api.deactivateMedecin(id);
-      setFeedback("Médecin désactivé (il ne peut plus se connecter).");
+      if (m.is_active) await api.deactivateMedecin(m.id);
+      else await api.activateMedecin(m.id);
+      // Mise à jour optimiste du statut
+      setMedecins((prev) =>
+        prev.map((x) => (x.id === m.id ? { ...x, is_active: !x.is_active } : x)),
+      );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Désactivation impossible.");
+      setError(err instanceof ApiError ? err.message : "Action impossible.");
+    } finally {
+      setActingId(null);
     }
   };
 
@@ -122,7 +130,9 @@ export default function AdminMedecinsPage() {
           {medecins.map((m) => (
             <li
               key={m.id}
-              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3"
+              className={`flex items-center justify-between rounded-lg border bg-white px-4 py-3 ${
+                m.is_active ? "border-slate-200" : "border-slate-200 opacity-60"
+              }`}
             >
               <div>
                 <p className="font-medium text-slate-900">
@@ -133,12 +143,26 @@ export default function AdminMedecinsPage() {
                   {[m.structure_sante, m.ville].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <button
-                onClick={() => handleDeactivate(m.id)}
-                className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50"
-              >
-                Désactiver
-              </button>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    m.is_active ? "bg-brand-100 text-brand-800" : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {m.is_active ? "Actif" : "Inactif"}
+                </span>
+                <button
+                  onClick={() => handleToggle(m)}
+                  disabled={actingId === m.id}
+                  className={`rounded-md border px-3 py-1.5 text-sm disabled:opacity-60 ${
+                    m.is_active
+                      ? "border-red-300 text-red-700 hover:bg-red-50"
+                      : "border-brand-300 text-brand-700 hover:bg-brand-50"
+                  }`}
+                >
+                  {actingId === m.id ? "…" : m.is_active ? "Désactiver" : "Réactiver"}
+                </button>
+              </div>
             </li>
           ))}
         </ul>
