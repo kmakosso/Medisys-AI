@@ -4,12 +4,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import CurrentUser, require_role
 from app.db.session import get_db
 from app.models.medecin import MedecinProfile
 from app.models.user import RoleEnum, User
 from app.schemas.medecin import (
+    MedecinAdminItem,
     MedecinCreateRequest,
     MedecinListResponse,
     MedecinProfileResponse,
@@ -36,7 +38,10 @@ async def list_medecins(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
 ) -> list[MedecinListResponse]:
-    q = select(MedecinProfile)
+    # Recherche publique : seuls les médecins dont le compte est actif sont listés
+    q = select(MedecinProfile).join(User, MedecinProfile.user_id == User.id).where(
+        User.is_active.is_(True)
+    )
     if specialite:
         q = q.where(MedecinProfile.specialite.ilike(f"%{specialite}%"))
     if ville:
@@ -44,6 +49,34 @@ async def list_medecins(
     q = q.offset((page - 1) * size).limit(size)
     result = await db.execute(q)
     return [MedecinListResponse.model_validate(m) for m in result.scalars().all()]
+
+
+@router.get("/admin/tous", response_model=list[MedecinAdminItem])
+async def admin_list_medecins(
+    current_user: Annotated[User, require_role(RoleEnum.admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=200),
+) -> list[MedecinAdminItem]:
+    """Liste admin : tous les médecins (actifs ET inactifs) avec leur statut."""
+    result = await db.execute(
+        select(MedecinProfile)
+        .options(selectinload(MedecinProfile.user))
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    return [
+        MedecinAdminItem(
+            id=m.id,
+            nom=m.nom,
+            prenom=m.prenom,
+            specialite=m.specialite,
+            structure_sante=m.structure_sante,
+            ville=m.ville,
+            is_active=m.user.is_active,
+        )
+        for m in result.scalars().all()
+    ]
 
 
 @router.get("/me", response_model=MedecinProfileResponse)
@@ -142,3 +175,22 @@ async def admin_deactivate_medecin(
     )
     await db.commit()
     return {"message": "Médecin désactivé"}
+
+
+@router.patch("/{medecin_id}/activer", response_model=dict)
+async def admin_activate_medecin(
+    medecin_id: UUID,
+    current_user: Annotated[User, require_role(RoleEnum.admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    m = await _get_medecin_or_404(db, medecin_id)
+    result = await db.execute(select(User).where(User.id == m.user_id))
+    user = result.scalar_one_or_none()
+    if user:
+        user.is_active = True
+    await audit_service.log_action(
+        db, "admin_activate_medecin", user_id=current_user.id,
+        resource_type="medecin", resource_id=str(medecin_id)
+    )
+    await db.commit()
+    return {"message": "Médecin réactivé"}

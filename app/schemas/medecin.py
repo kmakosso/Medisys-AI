@@ -77,3 +77,15 @@ class MedecinListResponse(BaseModel):
     specialite: str
     structure_sante: str | None
     ville: str | None
+
+
+class MedecinAdminItem(BaseModel):
+    """Vue admin : inclut le statut actif/inactif (lu depuis le compte User)."""
+
+    id: UUID
+    nom: str
+    prenom: str
+    specialite: str
+    structure_sante: str | None
+    ville: str | None
+    is_active: bool
