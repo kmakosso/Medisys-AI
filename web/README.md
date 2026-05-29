@@ -6,11 +6,26 @@ Périmètre de cette itération : **authentification + parcours de prise de rend
 
 ## Fonctionnalités
 
-- Inscription / connexion patient (JWT access + refresh, refresh automatique sur 401)
-- Recherche de médecins par spécialité et ville
-- Consultation de la fiche médecin et de ses créneaux libres
-- Prise de rendez-vous sur un créneau
-- « Mes rendez-vous » : liste + annulation
+### Patient
+- Inscription / connexion (JWT access + refresh, refresh automatique sur 401)
+- Page d'accueil avec recherche (spécialité + ville) et raccourcis de spécialités
+- Recherche de médecins : filtres spécialité / ville / nom, **tri par disponibilité**,
+  cartes avec avatar, **badge « prochain créneau »** et tarif
+- Fiche médecin enrichie (bio, adresse, langues, tarif) + **créneaux groupés par jour**
+  et choix du **motif de consultation**
+- « Mes rendez-vous » : onglets **À venir / Passés**, **reprogrammation**, annulation
+- Dossier médical (lecture seule), édition du profil
+- **Cloche de notifications** in-app (confirmations, rappels, reprogrammations)
+
+### Médecin
+- Tableau des rendez-vous avec machine d'état (confirmer / terminer / annuler) + accès dossier
+- Gestion des créneaux : ajout ponctuel **et génération récurrente** (jours + plage horaire)
+- Gestion des **motifs de consultation** (libellé + durée)
+- Édition du profil enrichi (bio, langues, tarif, adresse)
+
+### Admin
+- Création / **activation / désactivation** des médecins (avec statut)
+- Liste des patients
 
 ## Prérequis
 

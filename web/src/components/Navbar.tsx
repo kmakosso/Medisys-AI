@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { NotificationBell } from "./NotificationBell";
 
 export function Navbar() {
   const { user, logout, loading } = useAuth();
@@ -51,6 +52,7 @@ export function Navbar() {
 
           {loading ? null : user ? (
             <div className="flex items-center gap-3">
+              <NotificationBell />
               <span className="hidden text-slate-500 sm:inline">{user.email}</span>
               <button
                 onClick={handleLogout}

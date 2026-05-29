@@ -12,6 +12,10 @@ export default function ProfilMedecinPage() {
     structure_sante: "",
     telephone: "",
     ville: "",
+    adresse: "",
+    langues: "",
+    tarif_fcfa: "",
+    bio: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,6 +34,10 @@ export default function ProfilMedecinPage() {
           structure_sante: m.structure_sante ?? "",
           telephone: m.telephone ?? "",
           ville: m.ville ?? "",
+          adresse: m.adresse ?? "",
+          langues: m.langues ?? "",
+          tarif_fcfa: m.tarif_fcfa != null ? String(m.tarif_fcfa) : "",
+          bio: m.bio ?? "",
         });
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Erreur de chargement.");
@@ -40,7 +48,8 @@ export default function ProfilMedecinPage() {
   }, []);
 
   const update =
-    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    (key: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleSave = async (e: React.FormEvent) => {
@@ -57,6 +66,10 @@ export default function ProfilMedecinPage() {
         structure_sante: form.structure_sante || null,
         telephone: form.telephone || null,
         ville: form.ville || null,
+        adresse: form.adresse || null,
+        langues: form.langues || null,
+        tarif_fcfa: form.tarif_fcfa ? Number(form.tarif_fcfa) : null,
+        bio: form.bio || null,
       });
       setFeedback("Profil mis à jour.");
     } catch (err) {
@@ -117,6 +130,47 @@ export default function ProfilMedecinPage() {
             value={form.telephone}
             onChange={update("telephone")}
             placeholder="+221XXXXXXXXX"
+            className={inputCls}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Adresse du cabinet</label>
+          <input value={form.adresse} onChange={update("adresse")} className={inputCls} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Langues (séparées par des virgules)
+            </label>
+            <input
+              value={form.langues}
+              onChange={update("langues")}
+              placeholder="Français, Wolof"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Tarif (FCFA)</label>
+            <input
+              type="number"
+              min={0}
+              step={500}
+              value={form.tarif_fcfa}
+              onChange={update("tarif_fcfa")}
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Présentation (bio)</label>
+          <textarea
+            value={form.bio}
+            onChange={update("bio")}
+            rows={4}
+            placeholder="Parcours, approche, spécialisations…"
             className={inputCls}
           />
         </div>

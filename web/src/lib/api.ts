@@ -14,9 +14,13 @@ import type {
   MedecinListItem,
   MedecinProfile,
   MedecinProfileUpdate,
+  Motif,
+  MotifCreatePayload,
+  Notification,
   PaginatedRendezVous,
   PatientProfile,
   PatientProfileUpdate,
+  RecurringDispoPayload,
   RegisterPayload,
   RendezVous,
   StatutRDV,
@@ -173,14 +177,37 @@ export const api = {
   me: () => request<User>("/api/v1/auth/me"),
 
   // Médecins
-  listMedecins: (params: { specialite?: string; ville?: string; page?: number; size?: number } = {}) => {
+  listMedecins: (
+    params: {
+      specialite?: string;
+      ville?: string;
+      q?: string;
+      tri?: string;
+      page?: number;
+      size?: number;
+    } = {},
+  ) => {
     const qs = new URLSearchParams();
     if (params.specialite) qs.set("specialite", params.specialite);
     if (params.ville) qs.set("ville", params.ville);
+    if (params.q) qs.set("q", params.q);
+    if (params.tri) qs.set("tri", params.tri);
     qs.set("page", String(params.page ?? 1));
     qs.set("size", String(params.size ?? 20));
     return request<MedecinListItem[]>(`/api/v1/medecins?${qs.toString()}`, { auth: false });
   },
+
+  // Motifs de consultation
+  listMotifs: (medecinId: string) =>
+    request<Motif[]>(`/api/v1/medecins/${medecinId}/motifs`, { auth: false }),
+
+  listMyMotifs: () => request<Motif[]>("/api/v1/medecins/me/motifs"),
+
+  createMotif: (payload: MotifCreatePayload) =>
+    request<Motif>("/api/v1/medecins/me/motifs", { method: "POST", body: payload }),
+
+  deleteMotif: (id: string) =>
+    request<void>(`/api/v1/medecins/me/motifs/${id}`, { method: "DELETE" }),
 
   getMedecin: (id: string) =>
     request<MedecinProfile>(`/api/v1/medecins/${id}`, { auth: false }),
@@ -209,6 +236,12 @@ export const api = {
       body: payload,
     }),
 
+  createRecurringDispos: (payload: RecurringDispoPayload) =>
+    request<Disponibilite[]>("/api/v1/medecins/me/disponibilites/recurrentes", {
+      method: "POST",
+      body: payload,
+    }),
+
   deleteDisponibilite: (slotId: string) =>
     request<void>(`/api/v1/medecins/me/disponibilites/${slotId}`, { method: "DELETE" }),
 
@@ -229,6 +262,25 @@ export const api = {
       method: "PATCH",
       body: { statut },
     }),
+
+  rescheduleRendezVous: (id: string, nouveau_creneau_id: string) =>
+    request<RendezVous>(`/api/v1/rendez-vous/${id}/reprogrammer`, {
+      method: "PATCH",
+      body: { nouveau_creneau_id },
+    }),
+
+  // Notifications
+  listNotifications: (unreadOnly = false) =>
+    request<Notification[]>(`/api/v1/notifications?unread_only=${unreadOnly}`),
+
+  unreadNotificationsCount: () =>
+    request<{ count: number }>("/api/v1/notifications/unread-count"),
+
+  markNotificationRead: (id: string) =>
+    request<void>(`/api/v1/notifications/${id}/lu`, { method: "PATCH" }),
+
+  markAllNotificationsRead: () =>
+    request<void>("/api/v1/notifications/lire-tout", { method: "POST" }),
 
   // Patients
   getMyPatient: () => request<PatientProfile>("/api/v1/patients/me"),

@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 const TABS = [
   { href: "/medecin/rendez-vous", label: "Rendez-vous" },
   { href: "/medecin/disponibilites", label: "Mes créneaux" },
+  { href: "/medecin/motifs", label: "Motifs" },
   { href: "/medecin/profil", label: "Mon profil" },
 ];
 

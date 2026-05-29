@@ -38,12 +38,53 @@ export interface MedecinListItem {
   specialite: string;
   structure_sante: string | null;
   ville: string | null;
+  tarif_fcfa?: number | null;
+  prochain_creneau?: string | null;
 }
 
-export interface MedecinProfile extends MedecinListItem {
+export interface MedecinProfile {
+  id: string;
   user_id: string;
+  nom: string;
+  prenom: string;
+  specialite: string;
+  structure_sante: string | null;
+  ville: string | null;
   numero_ordre: string | null;
   telephone: string | null;
+  bio: string | null;
+  langues: string | null;
+  tarif_fcfa: number | null;
+  adresse: string | null;
+}
+
+export interface Motif {
+  id: string;
+  medecin_id: string;
+  libelle: string;
+  duree_minutes: number;
+}
+
+export interface MotifCreatePayload {
+  libelle: string;
+  duree_minutes: number;
+}
+
+export interface RecurringDispoPayload {
+  jours_semaine: number[];
+  heure_debut: string;
+  heure_fin: string;
+  duree_minutes: number;
+  date_debut: string;
+  date_fin: string;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  message: string;
+  lu: boolean;
+  created_at: string;
 }
 
 export interface Disponibilite {
@@ -159,4 +200,8 @@ export interface MedecinProfileUpdate {
   structure_sante?: string | null;
   telephone?: string | null;
   ville?: string | null;
+  bio?: string | null;
+  langues?: string | null;
+  tarif_fcfa?: number | null;
+  adresse?: string | null;
 }
