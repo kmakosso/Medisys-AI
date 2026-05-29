@@ -7,10 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import CurrentUser, require_role
 from app.db.session import get_db
+from app.models.medecin import MedecinProfile
 from app.models.patient import PatientProfile
 from app.models.user import RoleEnum, User
 from app.schemas.patient import PatientProfileCreate, PatientProfileResponse, PatientProfileUpdate
-from app.services import audit_service
+from app.services import audit_service, reservation_service
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -80,10 +81,34 @@ async def list_patients(
 @router.get("/{patient_id}", response_model=PatientProfileResponse)
 async def get_patient(
     patient_id: UUID,
-    current_user: Annotated[User, require_role(RoleEnum.admin)],
+    current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PatientProfileResponse:
+    """Profil d'un patient.
+
+    - admin : accès total
+    - patient : uniquement son propre profil
+    - médecin : uniquement les patients avec qui il a (eu) un rendez-vous
+    """
     profile = await _get_profile_or_404(db, patient_id)
+
+    if current_user.role == RoleEnum.admin:
+        pass
+    elif current_user.role == RoleEnum.patient:
+        if profile.user_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+    elif current_user.role == RoleEnum.medecin:
+        result = await db.execute(
+            select(MedecinProfile).where(MedecinProfile.user_id == current_user.id)
+        )
+        medecin = result.scalar_one_or_none()
+        if medecin is None or not await reservation_service.medecin_has_any_rdv_with_patient(
+            db, medecin.id, patient_id
+        ):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
+
     return PatientProfileResponse.model_validate(profile)
 
 

@@ -90,3 +90,62 @@ async def test_patient_cannot_access_dossier_of_other_patient(client: AsyncClien
         headers={"Authorization": f"Bearer {attacker_token}"},
     )
     assert resp.status_code == 403
+
+
+async def _create_medecin_with_slot(db_session: AsyncSession, email: str):
+    """Crée un médecin (mot de passe connu) + un créneau libre. Retourne (medecin, slot)."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.security import hash_password
+    from app.models.disponibilite import Disponibilite
+    from app.models.medecin import MedecinProfile
+    from app.models.user import RoleEnum, User
+
+    u = User(email=email, hashed_password=hash_password("Medecin1234!"), role=RoleEnum.medecin)
+    db_session.add(u)
+    await db_session.flush()
+    m = MedecinProfile(user_id=u.id, nom="Med", prenom="Doc", specialite="Généraliste")
+    db_session.add(m)
+    await db_session.flush()
+    base = datetime.now(UTC).replace(microsecond=0) + timedelta(hours=3)
+    slot = Disponibilite(medecin_id=m.id, debut=base, fin=base + timedelta(hours=1))
+    db_session.add(slot)
+    await db_session.commit()
+    return m, slot
+
+
+@pytest.mark.asyncio
+async def test_medecin_sees_patient_identity_only_with_rdv(
+    client: AsyncClient, db_session: AsyncSession
+):
+    # Médecin A a un créneau, le patient réserve avec lui
+    med_a, slot = await _create_medecin_with_slot(db_session, "med.a@test.sn")
+    med_b, _ = await _create_medecin_with_slot(db_session, "med.b@test.sn")
+
+    patient_token = await _register_and_login(client, "pat.identity@test.sn")
+    book = await client.post(
+        "/api/v1/rendez-vous",
+        json={"creneau_id": str(slot.id)},
+        headers={"Authorization": f"Bearer {patient_token}"},
+    )
+    assert book.status_code == 201
+    patient_id = book.json()["patient_id"]
+
+    # Médecin A (a un RDV) peut voir l'identité du patient
+    tok_a = (
+        await client.post(LOGIN_URL, json={"email": "med.a@test.sn", "password": "Medecin1234!"})
+    ).json()["access_token"]
+    resp_a = await client.get(
+        f"{PATIENTS_URL}/{patient_id}", headers={"Authorization": f"Bearer {tok_a}"}
+    )
+    assert resp_a.status_code == 200
+    assert resp_a.json()["nom"] is not None
+
+    # Médecin B (aucun RDV avec ce patient) ne peut pas
+    tok_b = (
+        await client.post(LOGIN_URL, json={"email": "med.b@test.sn", "password": "Medecin1234!"})
+    ).json()["access_token"]
+    resp_b = await client.get(
+        f"{PATIENTS_URL}/{patient_id}", headers={"Authorization": f"Bearer {tok_b}"}
+    )
+    assert resp_b.status_code == 403

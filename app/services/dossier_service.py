@@ -26,15 +26,21 @@ async def get_or_create_dossier(db: AsyncSession, patient_id: UUID) -> DossierMe
 async def medecin_has_rdv_with_patient(
     db: AsyncSession, medecin_id: UUID, patient_id: UUID
 ) -> bool:
-    """A medecin can write to a patient's dossier only if they have a shared RDV."""
+    """A medecin can write to a patient's dossier only if they have a shared RDV.
+
+    Uses limit(1) + first(): there may be several matching RDVs between the same
+    medecin and patient, so scalar_one_or_none() would raise MultipleResultsFound.
+    """
     result = await db.execute(
-        select(RendezVous).where(
+        select(RendezVous.id)
+        .where(
             RendezVous.medecin_id == medecin_id,
             RendezVous.patient_id == patient_id,
             RendezVous.statut.in_([StatutRDV.confirme, StatutRDV.termine]),
         )
+        .limit(1)
     )
-    return result.scalar_one_or_none() is not None
+    return result.first() is not None
 
 
 async def add_entree(

@@ -49,6 +49,23 @@ async def check_patient_overlap(
     return result.scalar_one_or_none() is not None
 
 
+async def medecin_has_any_rdv_with_patient(
+    db: AsyncSession, medecin_id: UUID, patient_id: UUID
+) -> bool:
+    """True si le médecin a au moins un RDV (tout statut) avec ce patient.
+
+    Utilisé pour autoriser le médecin à voir l'identité du patient — y compris
+    pour un RDV encore en 'demande' (avant confirmation). L'accès au dossier
+    médical reste plus restrictif (voir dossier_service: confirme/termine).
+    """
+    result = await db.execute(
+        select(RendezVous.id)
+        .where(RendezVous.medecin_id == medecin_id, RendezVous.patient_id == patient_id)
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def create_rendezvous(
     db: AsyncSession,
     patient_id: UUID,
