@@ -76,3 +76,8 @@ export interface CreateRendezVousPayload {
   creneau_id: string;
   motif?: string;
 }
+
+export interface CreateDisponibilitePayload {
+  debut: string; // ISO datetime
+  fin: string;
+}

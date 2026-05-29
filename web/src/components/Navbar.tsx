@@ -25,9 +25,14 @@ export function Navbar() {
           <Link href="/medecins" className="text-slate-600 hover:text-brand-700">
             Médecins
           </Link>
-          {user && (
+          {user?.role === "patient" && (
             <Link href="/rendez-vous" className="text-slate-600 hover:text-brand-700">
               Mes rendez-vous
+            </Link>
+          )}
+          {user?.role === "medecin" && (
+            <Link href="/medecin/rendez-vous" className="text-slate-600 hover:text-brand-700">
+              Espace médecin
             </Link>
           )}
 

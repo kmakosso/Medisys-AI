@@ -2,6 +2,7 @@
 // Gère le stockage des tokens JWT et le refresh automatique sur 401.
 
 import type {
+  CreateDisponibilitePayload,
   CreateRendezVousPayload,
   Disponibilite,
   LoginPayload,
@@ -176,10 +177,29 @@ export const api = {
   getMedecin: (id: string) =>
     request<MedecinProfile>(`/api/v1/medecins/${id}`, { auth: false }),
 
+  // Profil du médecin connecté
+  getMyMedecin: () => request<MedecinProfile>("/api/v1/medecins/me"),
+
+  // Créneaux libres (public) — pour les patients
   listDisponibilites: (medecinId: string) =>
     request<Disponibilite[]>(`/api/v1/medecins/${medecinId}/disponibilites?libre_only=true`, {
       auth: false,
     }),
+
+  // Tous les créneaux d'un médecin (libres + réservés) — pour l'espace médecin
+  listAllDisponibilites: (medecinId: string) =>
+    request<Disponibilite[]>(`/api/v1/medecins/${medecinId}/disponibilites?libre_only=false`, {
+      auth: false,
+    }),
+
+  createDisponibilite: (payload: CreateDisponibilitePayload) =>
+    request<Disponibilite>("/api/v1/medecins/me/disponibilites", {
+      method: "POST",
+      body: payload,
+    }),
+
+  deleteDisponibilite: (slotId: string) =>
+    request<void>(`/api/v1/medecins/me/disponibilites/${slotId}`, { method: "DELETE" }),
 
   // Rendez-vous
   createRendezVous: (payload: CreateRendezVousPayload) =>
