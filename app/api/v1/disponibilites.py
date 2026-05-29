@@ -10,8 +10,12 @@ from app.db.session import get_db
 from app.models.disponibilite import Disponibilite, StatutDisponibilite
 from app.models.medecin import MedecinProfile
 from app.models.user import RoleEnum, User
-from app.schemas.disponibilite import DisponibiliteCreate, DisponibiliteResponse
-from app.services import audit_service
+from app.schemas.disponibilite import (
+    DisponibiliteCreate,
+    DisponibiliteRecurrenteCreate,
+    DisponibiliteResponse,
+)
+from app.services import audit_service, disponibilite_service
 
 router = APIRouter(tags=["disponibilites"])
 
@@ -42,6 +46,32 @@ async def create_disponibilite(
     await db.commit()
     await db.refresh(slot)
     return DisponibiliteResponse.model_validate(slot)
+
+
+@router.post(
+    "/medecins/me/disponibilites/recurrentes",
+    response_model=list[DisponibiliteResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_disponibilites_recurrentes(
+    body: DisponibiliteRecurrenteCreate,
+    current_user: Annotated[User, require_role(RoleEnum.medecin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[DisponibiliteResponse]:
+    result = await db.execute(
+        select(MedecinProfile).where(MedecinProfile.user_id == current_user.id)
+    )
+    medecin = result.scalar_one_or_none()
+    if medecin is None:
+        raise HTTPException(status_code=404, detail="Profil médecin introuvable")
+
+    created = await disponibilite_service.generate_recurring(db, medecin.id, body)
+    await audit_service.log_action(
+        db, "create_disponibilites_recurrentes", user_id=current_user.id,
+        resource_type="disponibilite", detail=f"{len(created)} créneaux générés"
+    )
+    await db.commit()
+    return [DisponibiliteResponse.model_validate(s) for s in created]
 
 
 @router.delete("/medecins/me/disponibilites/{slot_id}", status_code=status.HTTP_204_NO_CONTENT)

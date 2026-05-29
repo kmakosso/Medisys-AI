@@ -1,14 +1,17 @@
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import CurrentUser, require_role
 from app.db.session import get_db
+from app.models.disponibilite import Disponibilite, StatutDisponibilite
 from app.models.medecin import MedecinProfile
+from app.models.motif import MotifConsultation
 from app.models.user import RoleEnum, User
 from app.schemas.medecin import (
     MedecinAdminItem,
@@ -17,7 +20,18 @@ from app.schemas.medecin import (
     MedecinProfileResponse,
     MedecinProfileUpdate,
 )
+from app.schemas.motif import MotifCreate, MotifResponse
 from app.services import audit_service, auth_service
+
+
+async def _my_medecin(db: AsyncSession, user: User) -> MedecinProfile:
+    result = await db.execute(
+        select(MedecinProfile).where(MedecinProfile.user_id == user.id)
+    )
+    m = result.scalar_one_or_none()
+    if m is None:
+        raise HTTPException(status_code=404, detail="Profil médecin introuvable")
+    return m
 
 router = APIRouter(prefix="/medecins", tags=["medecins"])
 
@@ -35,20 +49,60 @@ async def list_medecins(
     db: Annotated[AsyncSession, Depends(get_db)],
     specialite: str | None = Query(None),
     ville: str | None = Query(None),
+    q: str | None = Query(None, description="Recherche libre sur nom/prénom"),
+    tri: str | None = Query(None, description="'dispo' pour trier par prochain créneau"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
 ) -> list[MedecinListResponse]:
     # Recherche publique : seuls les médecins dont le compte est actif sont listés
-    q = select(MedecinProfile).join(User, MedecinProfile.user_id == User.id).where(
+    query = select(MedecinProfile).join(User, MedecinProfile.user_id == User.id).where(
         User.is_active.is_(True)
     )
     if specialite:
-        q = q.where(MedecinProfile.specialite.ilike(f"%{specialite}%"))
+        query = query.where(MedecinProfile.specialite.ilike(f"%{specialite}%"))
     if ville:
-        q = q.where(MedecinProfile.ville.ilike(f"%{ville}%"))
-    q = q.offset((page - 1) * size).limit(size)
-    result = await db.execute(q)
-    return [MedecinListResponse.model_validate(m) for m in result.scalars().all()]
+        query = query.where(MedecinProfile.ville.ilike(f"%{ville}%"))
+    if q:
+        like = f"%{q}%"
+        query = query.where(MedecinProfile.nom.ilike(like) | MedecinProfile.prenom.ilike(like))
+    query = query.offset((page - 1) * size).limit(size)
+    result = await db.execute(query)
+    medecins = list(result.scalars().all())
+
+    # Prochain créneau libre futur par médecin (un seul aller-retour DB)
+    next_map: dict = {}
+    if medecins:
+        now = datetime.now(UTC)
+        sub = await db.execute(
+            select(Disponibilite.medecin_id, func.min(Disponibilite.debut))
+            .where(
+                Disponibilite.medecin_id.in_([m.id for m in medecins]),
+                Disponibilite.statut == StatutDisponibilite.libre,
+                Disponibilite.debut > now,
+            )
+            .group_by(Disponibilite.medecin_id)
+        )
+        next_map = {row[0]: row[1] for row in sub.all()}
+
+    items = [
+        MedecinListResponse(
+            id=m.id,
+            nom=m.nom,
+            prenom=m.prenom,
+            specialite=m.specialite,
+            structure_sante=m.structure_sante,
+            ville=m.ville,
+            tarif_fcfa=m.tarif_fcfa,
+            prochain_creneau=next_map.get(m.id),
+        )
+        for m in medecins
+    ]
+
+    if tri == "dispo":
+        # Médecins avec dispo d'abord (par date croissante), puis ceux sans dispo
+        items.sort(key=lambda x: (x.prochain_creneau is None, x.prochain_creneau or datetime.max.replace(tzinfo=UTC)))
+
+    return items
 
 
 @router.get("/admin/tous", response_model=list[MedecinAdminItem])
@@ -194,3 +248,64 @@ async def admin_activate_medecin(
     )
     await db.commit()
     return {"message": "Médecin réactivé"}
+
+
+# ─── Motifs de consultation ──────────────────────────────────────────────────
+
+@router.get("/me/motifs", response_model=list[MotifResponse])
+async def list_my_motifs(
+    current_user: Annotated[User, require_role(RoleEnum.medecin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[MotifResponse]:
+    medecin = await _my_medecin(db, current_user)
+    result = await db.execute(
+        select(MotifConsultation).where(MotifConsultation.medecin_id == medecin.id)
+    )
+    return [MotifResponse.model_validate(x) for x in result.scalars().all()]
+
+
+@router.post("/me/motifs", response_model=MotifResponse, status_code=status.HTTP_201_CREATED)
+async def create_my_motif(
+    body: MotifCreate,
+    current_user: Annotated[User, require_role(RoleEnum.medecin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MotifResponse:
+    medecin = await _my_medecin(db, current_user)
+    motif = MotifConsultation(
+        medecin_id=medecin.id, libelle=body.libelle, duree_minutes=body.duree_minutes
+    )
+    db.add(motif)
+    await db.commit()
+    await db.refresh(motif)
+    return MotifResponse.model_validate(motif)
+
+
+@router.delete("/me/motifs/{motif_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_motif(
+    motif_id: UUID,
+    current_user: Annotated[User, require_role(RoleEnum.medecin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    medecin = await _my_medecin(db, current_user)
+    result = await db.execute(
+        select(MotifConsultation).where(
+            MotifConsultation.id == motif_id, MotifConsultation.medecin_id == medecin.id
+        )
+    )
+    motif = result.scalar_one_or_none()
+    if motif is None:
+        raise HTTPException(status_code=404, detail="Motif introuvable")
+    await db.delete(motif)
+    await db.commit()
+
+
+@router.get("/{medecin_id}/motifs", response_model=list[MotifResponse])
+async def list_medecin_motifs(
+    medecin_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[MotifResponse]:
+    """Motifs proposés par un médecin (public, pour la prise de RDV)."""
+    result = await db.execute(
+        select(MotifConsultation).where(MotifConsultation.medecin_id == medecin_id)
+    )
+    return [MotifResponse.model_validate(x) for x in result.scalars().all()]

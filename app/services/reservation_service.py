@@ -123,3 +123,50 @@ async def transition_rendezvous(
 
     await db.flush()
     return rdv
+
+
+async def reschedule_rendezvous(
+    db: AsyncSession, rdv: RendezVous, nouveau_creneau_id: UUID
+) -> RendezVous:
+    """Déplace un RDV vers un nouveau créneau du même médecin.
+
+    Le RDV repasse en 'demande' (re-confirmation nécessaire par le médecin).
+    """
+    if rdv.statut not in (StatutRDV.demande, StatutRDV.confirme):
+        raise ValueError("Seul un rendez-vous en attente ou confirmé peut être reprogrammé")
+
+    new_slot = await get_disponibilite(db, nouveau_creneau_id)
+    if new_slot is None:
+        raise ValueError("Nouveau créneau introuvable")
+    if new_slot.id == rdv.creneau_id:
+        raise ValueError("Le nouveau créneau est identique à l'actuel")
+    if new_slot.medecin_id != rdv.medecin_id:  # type: ignore[comparison-overlap]
+        raise ValueError("Le nouveau créneau doit appartenir au même médecin")
+    if new_slot.statut != StatutDisponibilite.libre:
+        raise ValueError("Ce créneau est déjà réservé")
+
+    overlap = await check_patient_overlap(
+        db, rdv.patient_id, new_slot.debut, new_slot.fin, exclude_rdv_id=rdv.id
+    )
+    if overlap:
+        raise ValueError("Vous avez déjà un rendez-vous sur ce créneau horaire")
+
+    # Libère l'ancien créneau, réserve le nouveau
+    old_result = await db.execute(
+        select(Disponibilite).where(Disponibilite.id == rdv.creneau_id)
+    )
+    old_slot = old_result.scalar_one_or_none()
+    if old_slot:
+        old_slot.statut = StatutDisponibilite.libre
+
+    new_slot.statut = StatutDisponibilite.reserve
+    rdv.creneau_id = new_slot.id
+    rdv.statut = StatutRDV.demande
+
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Ce créneau vient d'être réservé par quelqu'un d'autre")
+
+    return rdv

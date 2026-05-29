@@ -15,6 +15,10 @@ class RendezVousStatusUpdate(BaseModel):
     statut: StatutRDV
 
 
+class RendezVousReschedule(BaseModel):
+    nouveau_creneau_id: UUID
+
+
 class RendezVousResponse(BaseModel):
     model_config = {"from_attributes": True}
 

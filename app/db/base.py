@@ -14,6 +14,8 @@ from app.models import (  # noqa: E402, F401
     disponibilite,
     dossier,
     medecin,
+    motif,
+    notification,
     patient,
     refresh_token,
     rendezvous,
