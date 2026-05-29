@@ -1,0 +1,79 @@
+import re
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+_SENEGAL_PHONE_RE = re.compile(r"^\+221[0-9]{9}$")
+
+
+class MedecinProfileBase(BaseModel):
+    nom: str = Field(min_length=1, max_length=100)
+    prenom: str = Field(min_length=1, max_length=100)
+    specialite: str = Field(min_length=1, max_length=100)
+    numero_ordre: str | None = Field(None, max_length=50)
+    structure_sante: str | None = Field(None, max_length=255)
+    telephone: str | None = None
+    ville: str | None = Field(None, max_length=100)
+
+    @field_validator("telephone")
+    @classmethod
+    def validate_telephone(cls, v: str | None) -> str | None:
+        if v is not None and not _SENEGAL_PHONE_RE.match(v):
+            raise ValueError("Le téléphone doit être au format sénégalais (+221XXXXXXXXX)")
+        return v
+
+
+class MedecinCreateRequest(BaseModel):
+    """Admin creates a medecin account + profile in one step."""
+
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    nom: str = Field(min_length=1, max_length=100)
+    prenom: str = Field(min_length=1, max_length=100)
+    specialite: str = Field(min_length=1, max_length=100)
+    numero_ordre: str | None = Field(None, max_length=50)
+    structure_sante: str | None = Field(None, max_length=255)
+    telephone: str | None = None
+    ville: str | None = Field(None, max_length=100)
+
+    @field_validator("telephone")
+    @classmethod
+    def validate_telephone(cls, v: str | None) -> str | None:
+        if v is not None and not _SENEGAL_PHONE_RE.match(v):
+            raise ValueError("Le téléphone doit être au format sénégalais (+221XXXXXXXXX)")
+        return v
+
+
+class MedecinProfileUpdate(BaseModel):
+    nom: str | None = Field(None, min_length=1, max_length=100)
+    prenom: str | None = Field(None, min_length=1, max_length=100)
+    specialite: str | None = Field(None, min_length=1, max_length=100)
+    numero_ordre: str | None = Field(None, max_length=50)
+    structure_sante: str | None = Field(None, max_length=255)
+    telephone: str | None = None
+    ville: str | None = Field(None, max_length=100)
+
+    @field_validator("telephone")
+    @classmethod
+    def validate_telephone(cls, v: str | None) -> str | None:
+        if v is not None and not _SENEGAL_PHONE_RE.match(v):
+            raise ValueError("Le téléphone doit être au format sénégalais (+221XXXXXXXXX)")
+        return v
+
+
+class MedecinProfileResponse(MedecinProfileBase):
+    model_config = {"from_attributes": True}
+
+    id: UUID
+    user_id: UUID
+
+
+class MedecinListResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: UUID
+    nom: str
+    prenom: str
+    specialite: str
+    structure_sante: str | None
+    ville: str | None
