@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,17 @@ class StatutRDV(str, enum.Enum):
 
 class RendezVous(Base):
     __tablename__ = "rendez_vous"
+    __table_args__ = (
+        # Un seul RDV *actif* par créneau : on autorise plusieurs lignes annulées
+        # (historique/audit), mais une seule non-annulée. Permet de re-réserver
+        # un créneau libéré après annulation.
+        Index(
+            "uq_active_rdv_per_creneau",
+            "creneau_id",
+            unique=True,
+            postgresql_where=text("statut <> 'annule'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
@@ -45,8 +56,8 @@ class RendezVous(Base):
     creneau_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("disponibilites.id", ondelete="RESTRICT"),
-        unique=True,  # Guarantees one RDV per slot
         nullable=False,
+        # Unicité gérée par l'index partiel uq_active_rdv_per_creneau (cf. __table_args__)
     )
     motif: Mapped[str | None] = mapped_column(Text, nullable=True)
     statut: Mapped[StatutRDV] = mapped_column(
