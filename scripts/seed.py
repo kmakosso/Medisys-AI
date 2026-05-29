@@ -116,7 +116,7 @@ async def seed() -> None:
         db.add_all([rdv1, rdv2])
         await db.commit()
 
-    print("✅ Seed terminé !")
+    print("[OK] Seed termine !")
     print("  admin@medisys.sn        / Admin1234!")
     print("  dr.diop@medisys.sn      / Medecin1234!")
     print("  dr.fall@medisys.sn      / Medecin1234!")
