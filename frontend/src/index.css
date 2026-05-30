@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-white text-[#202124];
+  }
+}
+
+@layer components {
+  /* Motif hachuré pour les zones "hors disponibilité" (agenda Pro) */
+  .bg-hatch {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(148, 163, 184, 0.15),
+      rgba(148, 163, 184, 0.15) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+  }
+}
