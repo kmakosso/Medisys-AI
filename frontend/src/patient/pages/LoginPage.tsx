@@ -69,7 +69,9 @@ export function LoginPage() {
               <input type="checkbox" {...register("remember")} className="rounded border-slate-300" />
               Se souvenir de moi
             </label>
-            <span className="text-slate-400">Mot de passe oublié ?</span>
+            <Link to="/forgot-password" className="text-patient hover:underline">
+              Mot de passe oublié ?
+            </Link>
           </div>
           <Button type="submit" className="w-full" loading={isSubmitting}>
             Se connecter

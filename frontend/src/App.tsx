@@ -8,6 +8,8 @@ import { LandingPage } from "@/patient/pages/LandingPage";
 import { LoginPage } from "@/patient/pages/LoginPage";
 import { RegisterPage } from "@/patient/pages/RegisterPage";
 import { OTPVerificationPage } from "@/patient/pages/OTPVerificationPage";
+import { ForgotPasswordPage } from "@/patient/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/patient/pages/ResetPasswordPage";
 // Patient — protégé
 import { PatientLayout } from "@/patient/layouts/PatientLayout";
 import { DashboardPage } from "@/patient/pages/DashboardPage";
@@ -18,6 +20,8 @@ import { ProfilePage } from "@/patient/pages/ProfilePage";
 // Pro — public
 import { LandingProPage } from "@/pro/pages/LandingProPage";
 import { LoginProPage } from "@/pro/pages/LoginProPage";
+import { ForgotPasswordProPage } from "@/pro/pages/ForgotPasswordProPage";
+import { ResetPasswordProPage } from "@/pro/pages/ResetPasswordProPage";
 // Pro — protégé
 import { ProLayout } from "@/pro/layouts/ProLayout";
 import { DashboardProPage } from "@/pro/pages/DashboardProPage";
@@ -40,6 +44,8 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-otp" element={<OTPVerificationPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* ─── Portail patient (protégé) ─── */}
       <Route
@@ -60,6 +66,8 @@ export default function App() {
       {/* ─── Portail Pro (public) ─── */}
       <Route path="/pro" element={<LandingProPage />} />
       <Route path="/pro/login" element={<LoginProPage />} />
+      <Route path="/pro/forgot-password" element={<ForgotPasswordProPage />} />
+      <Route path="/pro/reset-password" element={<ResetPasswordProPage />} />
 
       {/* ─── Portail Pro (protégé) ─── */}
       <Route

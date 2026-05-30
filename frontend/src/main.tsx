@@ -8,7 +8,15 @@ import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30000 },
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      // Mode hors-ligne : cache utilisable 5 min sans refetch, conservé 24h
+      // (survit aux rechargements) + refetch auto au retour de connexion.
+      staleTime: 5 * 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
+      refetchOnReconnect: true,
+    },
   },
 });
 

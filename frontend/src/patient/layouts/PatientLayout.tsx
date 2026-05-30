@@ -5,6 +5,7 @@ import { useIdleLogout } from "@/shared/hooks/useIdleLogout";
 import { Logo } from "@/shared/ui/Logo";
 import { Button } from "@/shared/ui/Button";
 import { NotificationBell } from "@/shared/components/NotificationBell";
+import { OfflineBanner } from "@/shared/components/OfflineBanner";
 import { cn } from "@/shared/utils/cn";
 
 const LINKS = [
@@ -25,6 +26,7 @@ export function PatientLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9fa]">
+      <OfflineBanner />
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link to="/app/dashboard">

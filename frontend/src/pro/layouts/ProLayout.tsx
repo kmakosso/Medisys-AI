@@ -11,6 +11,7 @@ import { useAuth } from "@/shared/hooks/useAuth";
 import { useIdleLogout } from "@/shared/hooks/useIdleLogout";
 import { Logo } from "@/shared/ui/Logo";
 import { NotificationBell } from "@/shared/components/NotificationBell";
+import { OfflineBanner } from "@/shared/components/OfflineBanner";
 import { cn } from "@/shared/utils/cn";
 
 const NAV = [
@@ -66,6 +67,7 @@ export function ProLayout() {
 
       {/* Contenu */}
       <div className="flex min-w-0 flex-1 flex-col">
+        <OfflineBanner />
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
           <span className="text-sm text-slate-500">{user?.email}</span>
           <div className="flex items-center gap-2">

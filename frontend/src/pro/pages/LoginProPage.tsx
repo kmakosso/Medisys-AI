@@ -100,6 +100,11 @@ export function LoginProPage() {
             Se connecter
           </Button>
         </form>
+        <p className="mt-4 text-center text-sm">
+          <Link to="/pro/forgot-password" className="text-pro-accent hover:underline">
+            Mot de passe oublié ?
+          </Link>
+        </p>
       </div>
 
       <Link to="/login" className="mt-6 text-sm text-slate-400 hover:text-white">
