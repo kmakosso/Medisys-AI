@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -10,12 +11,21 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.patient import PatientProfile
 from app.models.user import RoleEnum
-from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    TokenResponse,
+    UserResponse,
+)
 from app.services import audit_service, auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 _settings = get_settings()
+logger = logging.getLogger("medisys.auth")
 
 
 def _client_ip(request: Request) -> str:
@@ -86,6 +96,47 @@ async def refresh(
         )
     await db.commit()
     return tokens
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("5/minute")
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Envoie un lien de réinitialisation. Réponse identique que l'email existe
+    ou non (anti-énumération)."""
+    user = await auth_service.get_user_by_email(db, body.email)
+    if user is not None and user.is_active:
+        token = await auth_service.create_password_reset_token(db, user)
+        await audit_service.log_action(
+            db, "password_reset_requested", user_id=user.id, resource_type="user",
+            resource_id=str(user.id),
+        )
+        await db.commit()
+        # Envoi email simulé (service SMTP/SMS réel prévu en v3).
+        reset_link = f"/reset-password?token={token}"
+        logger.info("Password reset link for %s : %s", user.email, reset_link)
+    return {"message": "Si un compte existe, un email de réinitialisation a été envoyé."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
+async def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    ok = await auth_service.reset_password_with_token(db, body.token, body.password)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien invalide ou expiré",
+        )
+    await audit_service.log_action(db, "password_reset_done", resource_type="user")
+    await db.commit()
+    return {"message": "Mot de passe réinitialisé."}
 
 
 @router.get("/me", response_model=UserResponse)

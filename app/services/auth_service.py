@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -13,11 +14,19 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.password_reset import PasswordResetToken
 from app.models.refresh_token import RefreshToken
 from app.models.user import RoleEnum, User
 from app.schemas.auth import TokenResponse
 
 settings = get_settings()
+
+# Durée de validité d'un lien de réinitialisation de mot de passe
+PASSWORD_RESET_TTL_MINUTES = 15
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
@@ -102,3 +111,51 @@ async def rotate_refresh_token(db: AsyncSession, old_token: str) -> TokenRespons
         return None
 
     return await issue_tokens(db, user)
+
+
+async def create_password_reset_token(db: AsyncSession, user: User) -> str:
+    """Génère un token de reset, stocke son hash, retourne le token EN CLAIR
+    (à insérer dans le lien email — jamais persisté en clair)."""
+    token = secrets.token_urlsafe(32)
+    prt = PasswordResetToken(
+        user_id=user.id,
+        token_hash=_hash_reset_token(token),
+        expires_at=datetime.now(UTC) + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES),
+    )
+    db.add(prt)
+    await db.flush()
+    return token
+
+
+async def reset_password_with_token(db: AsyncSession, token: str, new_password: str) -> bool:
+    """Valide le token (non utilisé, non expiré), change le mot de passe,
+    marque le token comme utilisé et révoque les refresh tokens. False si invalide."""
+    token_hash = _hash_reset_token(token)
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+    )
+    prt = result.scalar_one_or_none()
+    if prt is None or prt.used:
+        return False
+    expires = prt.expires_at if prt.expires_at.tzinfo else prt.expires_at.replace(tzinfo=UTC)
+    if expires < datetime.now(UTC):
+        return False
+
+    user = await get_user_by_id(db, prt.user_id)
+    if user is None:
+        return False
+
+    user.hashed_password = hash_password(new_password)
+    prt.used = True
+
+    # Sécurité : invalide toutes les sessions actives après reset
+    rt_result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False)
+        )
+    )
+    for rt in rt_result.scalars().all():
+        rt.revoked = True
+
+    await db.flush()
+    return True
