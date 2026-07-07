@@ -93,6 +93,8 @@ async def list_medecins(
             structure_sante=m.structure_sante,
             ville=m.ville,
             tarif_fcfa=m.tarif_fcfa,
+            latitude=m.latitude,
+            longitude=m.longitude,
             prochain_creneau=next_map.get(m.id),
         )
         for m in medecins

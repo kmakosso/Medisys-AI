@@ -39,11 +39,15 @@ async def seed() -> None:
             user_id=med1_user.id, nom="Diop", prenom="Amadou",
             specialite="Cardiologie", numero_ordre="ORDRE-001",
             structure_sante="Hôpital Principal de Dakar", telephone="+221771234567", ville="Dakar",
+            adresse="Avenue Cheikh Anta Diop, Dakar", latitude=14.6928, longitude=-17.4467,
+            tarif_fcfa=15000, langues="Français,Wolof",
         )
         med2 = MedecinProfile(
             user_id=med2_user.id, nom="Fall", prenom="Fatou",
             specialite="Pédiatrie", numero_ordre="ORDRE-002",
             structure_sante="Clinique Pasteur", telephone="+221776543210", ville="Thiès",
+            adresse="Route de Dakar, Thiès", latitude=14.7910, longitude=-16.9359,
+            tarif_fcfa=10000, langues="Français,Wolof",
         )
         db.add_all([med1, med2])
         await db.flush()

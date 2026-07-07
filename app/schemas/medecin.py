@@ -19,6 +19,8 @@ class MedecinProfileBase(BaseModel):
     langues: str | None = Field(None, max_length=255)
     tarif_fcfa: int | None = Field(None, ge=0)
     adresse: str | None = Field(None, max_length=255)
+    latitude: float | None = Field(None, ge=-90, le=90)
+    longitude: float | None = Field(None, ge=-180, le=180)
 
     @field_validator("telephone")
     @classmethod
@@ -61,6 +63,8 @@ class MedecinProfileUpdate(BaseModel):
     langues: str | None = Field(None, max_length=255)
     tarif_fcfa: int | None = Field(None, ge=0)
     adresse: str | None = Field(None, max_length=255)
+    latitude: float | None = Field(None, ge=-90, le=90)
+    longitude: float | None = Field(None, ge=-180, le=180)
 
     @field_validator("telephone")
     @classmethod
@@ -87,6 +91,8 @@ class MedecinListResponse(BaseModel):
     structure_sante: str | None
     ville: str | None
     tarif_fcfa: int | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     # Prochain créneau libre (calculé), pour le tri / badge de disponibilité
     prochain_creneau: datetime | None = None
 

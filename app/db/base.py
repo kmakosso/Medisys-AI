@@ -22,5 +22,6 @@ from app.models import (  # noqa: E402, F401
     patient,
     refresh_token,
     rendezvous,
+    sante,
     user,
 )
