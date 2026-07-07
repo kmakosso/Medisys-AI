@@ -12,8 +12,10 @@ class Base(DeclarativeBase):
 from app.models import (  # noqa: E402, F401
     audit,
     disponibilite,
+    document,
     dossier,
     medecin,
+    messaging,
     motif,
     notification,
     password_reset,
