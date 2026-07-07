@@ -11,6 +11,8 @@ import { cn } from "@/shared/utils/cn";
 const LINKS = [
   { to: "/app/dashboard", label: "Mes rendez-vous" },
   { to: "/app/search", label: "Rechercher" },
+  { to: "/app/messages", label: "Messages" },
+  { to: "/app/documents", label: "Documents" },
   { to: "/app/profile", label: "Mon profil" },
 ];
 

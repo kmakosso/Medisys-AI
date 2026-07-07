@@ -16,6 +16,8 @@ import { DashboardPage } from "@/patient/pages/DashboardPage";
 import { SearchPage } from "@/patient/pages/SearchPage";
 import { BookingPage } from "@/patient/pages/BookingPage";
 import { ProfilePage } from "@/patient/pages/ProfilePage";
+import { MessagesPage } from "@/patient/pages/MessagesPage";
+import { DocumentsPage } from "@/patient/pages/DocumentsPage";
 
 // Pro — public
 import { LandingProPage } from "@/pro/pages/LandingProPage";
@@ -30,6 +32,7 @@ import { PatientListPage } from "@/pro/pages/PatientListPage";
 import { PatientDossierPage } from "@/pro/pages/PatientDossierPage";
 import { DisponibilitesPage } from "@/pro/pages/DisponibilitesPage";
 import { ProfileProPage } from "@/pro/pages/ProfileProPage";
+import { MessagesProPage } from "@/pro/pages/MessagesProPage";
 
 export default function App() {
   const { initSession } = useAuth();
@@ -61,6 +64,8 @@ export default function App() {
         <Route path="search" element={<SearchPage />} />
         <Route path="book/:medecinId" element={<BookingPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="messages" element={<MessagesPage />} />
+        <Route path="documents" element={<DocumentsPage />} />
       </Route>
 
       {/* ─── Portail Pro (public) ─── */}
@@ -84,6 +89,7 @@ export default function App() {
         <Route path="patients/:patientId/dossier" element={<PatientDossierPage />} />
         <Route path="disponibilites" element={<DisponibilitesPage />} />
         <Route path="profile" element={<ProfileProPage />} />
+        <Route path="messages" element={<MessagesProPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

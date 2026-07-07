@@ -122,3 +122,35 @@ export interface NotificationItem {
   lu: boolean;
   created_at: string;
 }
+
+export interface Conversation {
+  id: string;
+  patient_id: string;
+  medecin_id: string;
+  interlocuteur_nom: string | null;
+  dernier_message: string | null;
+  non_lus: number;
+  updated_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_user_id: string;
+  contenu: string;
+  lu: boolean;
+  created_at: string;
+}
+
+export type TypeDocument = "ordonnance" | "resultat" | "compte_rendu" | "certificat" | "autre";
+
+export interface DocumentItem {
+  id: string;
+  patient_id: string;
+  medecin_id: string | null;
+  type_document: TypeDocument;
+  nom_fichier: string;
+  taille_octets: number;
+  created_at: string;
+  emetteur_nom: string | null;
+}

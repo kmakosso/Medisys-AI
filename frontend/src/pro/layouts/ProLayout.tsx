@@ -4,6 +4,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   Stethoscope,
   Users,
 } from "lucide-react";
@@ -18,6 +19,7 @@ const NAV = [
   { to: "/pro/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { to: "/pro/agenda", label: "Mon agenda", icon: CalendarDays },
   { to: "/pro/patients", label: "Mes patients", icon: Users },
+  { to: "/pro/messages", label: "Messages", icon: MessageCircle },
   { to: "/pro/disponibilites", label: "Disponibilités", icon: ClipboardList },
   { to: "/pro/profile", label: "Mon profil", icon: Stethoscope },
 ];

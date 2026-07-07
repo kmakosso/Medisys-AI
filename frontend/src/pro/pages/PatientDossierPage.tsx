@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, FilePlus2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, FilePlus2, MessageCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { patientsApi } from "@/shared/api/patients.api";
 import { dossierApi } from "@/shared/api/dossier.api";
+import { documentsApi } from "@/shared/api/documents.api";
+import { messagesApi } from "@/shared/api/messages.api";
 import { rdvApi } from "@/shared/api/rdv.api";
 import { medecinsApi } from "@/shared/api/medecins.api";
 import { apiErrorMessage } from "@/shared/api/axiosClient";
@@ -15,12 +17,16 @@ import { Modal } from "@/shared/ui/Modal";
 import { Label, Select, Textarea } from "@/shared/ui/Input";
 import { Spinner } from "@/shared/ui/Spinner";
 import { ErrorState } from "@/shared/ui/ErrorState";
+import { DocumentCard } from "@/patient/components/DocumentCard";
+import { downloadBlob } from "@/shared/utils/downloadBlob";
 import { calculerAge, formatDateTime } from "@/shared/utils/formatDate";
 import type {
   Disponibilite,
+  DocumentItem,
   EntreeDossier,
   PatientProfile,
   RendezVous,
+  TypeDocument,
   TypeEntree,
 } from "@/shared/types";
 
@@ -31,12 +37,22 @@ const TYPES: { value: TypeEntree; label: string }[] = [
   { value: "note", label: "Note" },
 ];
 
+const DOC_TYPES: { value: TypeDocument; label: string }[] = [
+  { value: "ordonnance", label: "Ordonnance" },
+  { value: "resultat", label: "Résultat" },
+  { value: "compte_rendu", label: "Compte rendu" },
+  { value: "certificat", label: "Certificat" },
+  { value: "autre", label: "Autre" },
+];
+
 export function PatientDossierPage() {
   const { patientId } = useParams<{ patientId: string }>();
+  const navigate = useNavigate();
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [entrees, setEntrees] = useState<EntreeDossier[]>([]);
   const [rdvs, setRdvs] = useState<RendezVous[]>([]);
   const [slots, setSlots] = useState<Record<string, Disponibilite>>({});
+  const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +61,12 @@ export function PatientDossierPage() {
   const [contenu, setContenu] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [docType, setDocType] = useState<TypeDocument>("ordonnance");
+  const [uploading, setUploading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [contacting, setContacting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const load = async () => {
     if (!patientId) return;
     setLoading(true);
@@ -52,14 +74,16 @@ export function PatientDossierPage() {
     try {
       const [p, me] = await Promise.all([patientsApi.get(patientId), medecinsApi.me()]);
       setPatient(p);
-      const [ds, page] = await Promise.all([
+      const [ds, page, documents] = await Promise.all([
         medecinsApi.disponibilites(me.id, false),
         rdvApi.list({ size: 200 }),
+        documentsApi.list(patientId),
       ]);
       const sMap: Record<string, Disponibilite> = {};
       for (const s of ds) sMap[s.id] = s;
       setSlots(sMap);
       setRdvs(page.items.filter((r) => r.patient_id === patientId));
+      setDocs(documents);
       try {
         const dossier = await dossierApi.get(patientId);
         setEntrees([...dossier.entrees].sort((a, b) => b.date_entree.localeCompare(a.date_entree)));
@@ -73,6 +97,55 @@ export function PatientDossierPage() {
       setError(apiErrorMessage(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUploadClick = () => fileRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !patientId) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Seuls les fichiers PDF sont acceptés.");
+      e.target.value = "";
+      return;
+    }
+    setUploading(true);
+    try {
+      const doc = await documentsApi.upload(patientId, file, docType);
+      setDocs((prev) => [doc, ...prev]);
+      toast.success("Document envoyé au patient.");
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Envoi impossible."));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleDownload = async (doc: DocumentItem) => {
+    if (!patientId) return;
+    setDownloadingId(doc.id);
+    try {
+      const blob = await documentsApi.download(patientId, doc.id);
+      downloadBlob(blob, doc.nom_fichier);
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Téléchargement impossible."));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleContact = async () => {
+    if (!patientId) return;
+    setContacting(true);
+    try {
+      await messagesApi.startConversation({ patientId });
+      navigate("/pro/messages");
+    } catch (err) {
+      toast.error(apiErrorMessage(err, "Un rendez-vous confirmé est requis."));
+    } finally {
+      setContacting(false);
     }
   };
 
@@ -110,48 +183,99 @@ export function PatientDossierPage() {
       </Link>
 
       <Card className="mb-6">
-        <div className="flex items-center gap-4">
-          <Avatar prenom={patient.prenom} nom={patient.nom} size="lg" />
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">{patient.prenom} {patient.nom}</h1>
-            <p className="text-sm text-slate-500">
-              {[age ? `${age} ans` : null, patient.sexe, patient.telephone, patient.ville]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <Avatar prenom={patient.prenom} nom={patient.nom} size="lg" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">{patient.prenom} {patient.nom}</h1>
+              <p className="text-sm text-slate-500">
+                {[age ? `${age} ans` : null, patient.sexe, patient.telephone, patient.ville]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
           </div>
+          <Button variant="outline" size="sm" loading={contacting} onClick={handleContact}>
+            <MessageCircle className="h-4 w-4" /> Contacter
+          </Button>
         </div>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Dossier */}
-        <div className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900">Dossier médical</h2>
-            <Button variant="pro" size="sm" onClick={() => setModal(true)}>
-              <FilePlus2 className="h-4 w-4" /> Ajouter une entrée
-            </Button>
-          </div>
-          {entrees.length === 0 ? (
-            <p className="text-slate-500">Aucune entrée pour le moment.</p>
-          ) : (
-            <ol className="relative space-y-4 border-l border-slate-200 pl-5">
-              {entrees.map((e) => (
-                <li key={e.id} className="relative">
-                  <span className="absolute -left-[27px] top-1 h-3 w-3 rounded-full bg-pro" />
-                  <Card className="p-4">
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="rounded-md bg-pro/10 px-2 py-0.5 text-xs font-medium text-pro">
-                        {TYPES.find((t) => t.value === e.type_entree)?.label ?? e.type_entree}
-                      </span>
-                      <span className="text-xs text-slate-400">{formatDateTime(e.date_entree)}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-sm text-slate-700">{e.contenu}</p>
-                  </Card>
-                </li>
+        <div className="lg:col-span-2 space-y-8">
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold text-slate-900">Dossier médical</h2>
+              <Button variant="pro" size="sm" onClick={() => setModal(true)}>
+                <FilePlus2 className="h-4 w-4" /> Ajouter une entrée
+              </Button>
+            </div>
+            {entrees.length === 0 ? (
+              <p className="text-slate-500">Aucune entrée pour le moment.</p>
+            ) : (
+              <ol className="relative space-y-4 border-l border-slate-200 pl-5">
+                {entrees.map((e) => (
+                  <li key={e.id} className="relative">
+                    <span className="absolute -left-[27px] top-1 h-3 w-3 rounded-full bg-pro" />
+                    <Card className="p-4">
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="rounded-md bg-pro/10 px-2 py-0.5 text-xs font-medium text-pro">
+                          {TYPES.find((t) => t.value === e.type_entree)?.label ?? e.type_entree}
+                        </span>
+                        <span className="text-xs text-slate-400">{formatDateTime(e.date_entree)}</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm text-slate-700">{e.contenu}</p>
+                    </Card>
+                  </li>
               ))}
             </ol>
           )}
+          </div>
+
+          {/* Documents */}
+          <div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold text-slate-900">Documents</h2>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={docType}
+                  onChange={(e) => setDocType(e.target.value as TypeDocument)}
+                  className="w-40"
+                >
+                  {DOC_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+                <Button variant="pro" size="sm" loading={uploading} onClick={handleUploadClick}>
+                  <Upload className="h-4 w-4" /> Envoyer au patient
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+            </div>
+            {docs.length === 0 ? (
+              <p className="text-sm text-slate-500">Aucun document pour ce patient.</p>
+            ) : (
+              <div className="space-y-2">
+                {docs.map((d) => (
+                  <DocumentCard
+                    key={d.id}
+                    doc={d}
+                    onDownload={handleDownload}
+                    downloading={downloadingId === d.id}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Historique RDV */}
