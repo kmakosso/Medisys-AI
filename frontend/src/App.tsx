@@ -18,6 +18,8 @@ import { BookingPage } from "@/patient/pages/BookingPage";
 import { ProfilePage } from "@/patient/pages/ProfilePage";
 import { MessagesPage } from "@/patient/pages/MessagesPage";
 import { DocumentsPage } from "@/patient/pages/DocumentsPage";
+import { ProfilSantePage } from "@/patient/pages/ProfilSantePage";
+import { CarteMedecinsPage } from "@/patient/pages/CarteMedecinsPage";
 
 // Pro — public
 import { LandingProPage } from "@/pro/pages/LandingProPage";
@@ -66,6 +68,8 @@ export default function App() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="messages" element={<MessagesPage />} />
         <Route path="documents" element={<DocumentsPage />} />
+        <Route path="profil/sante" element={<ProfilSantePage />} />
+        <Route path="carte" element={<CarteMedecinsPage />} />
       </Route>
 
       {/* ─── Portail Pro (public) ─── */}

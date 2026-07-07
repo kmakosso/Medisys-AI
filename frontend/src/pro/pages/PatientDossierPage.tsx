@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, FilePlus2, MessageCircle, Upload } from "lucide-react";
+import { ArrowLeft, FilePlus2, HeartPulse, MessageCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { patientsApi } from "@/shared/api/patients.api";
 import { dossierApi } from "@/shared/api/dossier.api";
 import { documentsApi } from "@/shared/api/documents.api";
 import { messagesApi } from "@/shared/api/messages.api";
+import { santeApi } from "@/shared/api/sante.api";
 import { rdvApi } from "@/shared/api/rdv.api";
 import { medecinsApi } from "@/shared/api/medecins.api";
 import { apiErrorMessage } from "@/shared/api/axiosClient";
@@ -19,15 +20,17 @@ import { Spinner } from "@/shared/ui/Spinner";
 import { ErrorState } from "@/shared/ui/ErrorState";
 import { DocumentCard } from "@/patient/components/DocumentCard";
 import { downloadBlob } from "@/shared/utils/downloadBlob";
-import { calculerAge, formatDateTime } from "@/shared/utils/formatDate";
+import { calculerAge, formatDate, formatDateTime } from "@/shared/utils/formatDate";
 import type {
   Disponibilite,
   DocumentItem,
   EntreeDossier,
   PatientProfile,
   RendezVous,
+  SanteProfil,
   TypeDocument,
   TypeEntree,
+  VaccinationEntry,
 } from "@/shared/types";
 
 const TYPES: { value: TypeEntree; label: string }[] = [
@@ -53,6 +56,8 @@ export function PatientDossierPage() {
   const [rdvs, setRdvs] = useState<RendezVous[]>([]);
   const [slots, setSlots] = useState<Record<string, Disponibilite>>({});
   const [docs, setDocs] = useState<DocumentItem[]>([]);
+  const [sante, setSante] = useState<SanteProfil | null>(null);
+  const [vaccinations, setVaccinations] = useState<VaccinationEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +89,17 @@ export function PatientDossierPage() {
       setSlots(sMap);
       setRdvs(page.items.filter((r) => r.patient_id === patientId));
       setDocs(documents);
+      try {
+        const [sp, vaccs] = await Promise.all([
+          santeApi.get(patientId),
+          santeApi.listVaccinations(patientId),
+        ]);
+        setSante(sp);
+        setVaccinations(vaccs);
+      } catch {
+        // Pas de RDV confirmé/terminé (403) ou profil vide — non bloquant
+        setSante(null);
+      }
       try {
         const dossier = await dossierApi.get(patientId);
         setEntrees([...dossier.entrees].sort((a, b) => b.date_entree.localeCompare(a.date_entree)));
@@ -297,6 +313,65 @@ export function PatientDossierPage() {
                 </Card>
               ))}
             </ul>
+          )}
+
+          {/* Profil de santé (lecture seule) */}
+          {sante && (
+            <div className="mt-6">
+              <h2 className="mb-3 flex items-center gap-1.5 font-semibold text-slate-900">
+                <HeartPulse className="h-4 w-4 text-pro" /> Profil de santé
+              </h2>
+              <Card className="space-y-3 p-4 text-sm">
+                <div>
+                  <span className="font-medium text-slate-700">Groupe sanguin : </span>
+                  {sante.groupe_sanguin ?? "—"}
+                </div>
+                {sante.allergies.length > 0 && (
+                  <div>
+                    <span className="font-medium text-slate-700">Allergies : </span>
+                    {sante.allergies.join(", ")}
+                  </div>
+                )}
+                {sante.antecedents.length > 0 && (
+                  <div>
+                    <span className="font-medium text-slate-700">Antécédents : </span>
+                    {sante.antecedents.join(", ")}
+                  </div>
+                )}
+                {sante.maladies_chroniques.length > 0 && (
+                  <div>
+                    <span className="font-medium text-slate-700">Maladies chroniques : </span>
+                    {sante.maladies_chroniques.join(", ")}
+                  </div>
+                )}
+                {sante.traitements_en_cours && (
+                  <div>
+                    <span className="font-medium text-slate-700">Traitements : </span>
+                    {sante.traitements_en_cours}
+                  </div>
+                )}
+                {(sante.contact_urgence_nom || sante.contact_urgence_telephone) && (
+                  <div>
+                    <span className="font-medium text-slate-700">Contact urgence : </span>
+                    {[sante.contact_urgence_prenom, sante.contact_urgence_nom, sante.contact_urgence_telephone]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </div>
+                )}
+                {vaccinations.length > 0 && (
+                  <div>
+                    <span className="font-medium text-slate-700">Vaccinations : </span>
+                    <ul className="mt-1 space-y-0.5 text-slate-600">
+                      {vaccinations.map((v) => (
+                        <li key={v.id}>
+                          {v.vaccin} — {formatDate(v.date_administration)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </Card>
+            </div>
           )}
         </div>
       </div>

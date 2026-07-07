@@ -38,6 +38,8 @@ export interface MedecinListItem {
   ville: string | null;
   tarif_fcfa?: number | null;
   prochain_creneau?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface MedecinProfile {
@@ -54,6 +56,8 @@ export interface MedecinProfile {
   langues: string | null;
   tarif_fcfa: number | null;
   adresse: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface MedecinAdminItem {
@@ -153,4 +157,29 @@ export interface DocumentItem {
   taille_octets: number;
   created_at: string;
   emetteur_nom: string | null;
+}
+
+export type GroupeSanguin = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
+
+export interface SanteProfil {
+  id: string;
+  patient_id: string;
+  groupe_sanguin: GroupeSanguin | null;
+  allergies: string[];
+  antecedents: string[];
+  maladies_chroniques: string[];
+  traitements_en_cours: string | null;
+  medecin_traitant_id: string | null;
+  contact_urgence_nom: string | null;
+  contact_urgence_prenom: string | null;
+  contact_urgence_telephone: string | null;
+  updated_at: string;
+}
+
+export interface VaccinationEntry {
+  id: string;
+  sante_profil_id: string;
+  vaccin: string;
+  date_administration: string;
+  prochain_rappel: string | null;
 }

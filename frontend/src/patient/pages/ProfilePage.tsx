@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { HeartPulse } from "lucide-react";
 import { toast } from "sonner";
 import { patientsApi } from "@/shared/api/patients.api";
 import { apiErrorMessage } from "@/shared/api/axiosClient";
@@ -89,6 +91,19 @@ export function ProfilePage() {
           <Button type="submit" loading={saving}>Enregistrer</Button>
         </form>
       </Card>
+
+      <Link
+        to="/app/profil/sante"
+        className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 hover:border-patient"
+      >
+        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-patient-50 text-patient">
+          <HeartPulse className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="font-medium text-slate-900">Mon profil de santé</p>
+          <p className="text-sm text-slate-500">Groupe sanguin, allergies, antécédents, vaccinations…</p>
+        </div>
+      </Link>
     </div>
   );
 }
